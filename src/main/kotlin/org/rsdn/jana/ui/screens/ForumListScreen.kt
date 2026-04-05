@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -18,21 +18,12 @@ data class Forum(
 
 @Composable
 fun ForumListScreen(
-    modifier: Modifier = Modifier,  // добавили параметр
+    forums: List<Forum>,           // <-- добавили параметр
+    modifier: Modifier = Modifier,
     onForumClick: (Forum) -> Unit
 ) {
-    val forums = remember {
-        listOf(
-            Forum(1, "Программирование", "Обсуждение общих вопросов программирования", 1234),
-            Forum(2, "Kotlin", "Вопросы по Kotlin и KMP", 567),
-            Forum(3, "Java", "Java-технологии и фреймворки", 890),
-            Forum(4, "Алгоритмы", "Алгоритмы и структуры данных", 432),
-            Forum(5, "Базы данных", "SQL, NoSQL и всё о БД", 765),
-        )
-    }
-
     LazyColumn(
-        modifier = modifier.fillMaxSize(), // используем переданный modifier
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {

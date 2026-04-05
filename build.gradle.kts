@@ -2,6 +2,7 @@ import nu.studer.gradle.jooq.JooqEdition
 
 plugins {
     kotlin("jvm") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.20"
     id("org.jetbrains.compose") version "1.9.0"
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.20"
     id("nu.studer.jooq") version "9.0"
@@ -36,6 +37,12 @@ dependencies {
     implementation("io.github.oshai:kotlin-logging:7.0.0")
 
     jooqGenerator("org.xerial:sqlite-jdbc:3.46.1.3")
+
+    // Ktor для HTTP запросов
+    implementation("io.ktor:ktor-client-core:3.0.3")
+    implementation("io.ktor:ktor-client-java:3.0.3") // для JVM
+    implementation("io.ktor:ktor-client-content-negotiation:3.0.3")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
 }
 
 sourceSets {
