@@ -1,71 +1,97 @@
 package org.rsdn.jana.data.dao
 
-import org.jooq.Record
+import org.jooq.impl.DSL
 import org.rsdn.jana.data.DatabaseManager
 import org.rsdn.jana.data.jooq.tables.Forums
-import org.rsdn.jana.ui.screens.Forum
+import org.rsdn.jana.data.jooq.tables.ForumGroups // Появится после генерации!
+import org.rsdn.jana.api.ForumDescription // Импортируй модель из API
+import org.rsdn.jana.ui.models.Forum
 
 class ForumDao(private val db: DatabaseManager) {
-    private val f = Forums.FORUMS
-
     fun getAll(): List<Forum> {
+        val f = Forums.FORUMS
+        val fg = ForumGroups.FORUM_GROUPS
+
         return db.dsl.select()
             .from(f)
-            .orderBy(f.TITLE)
-            .fetch()
-            .map { record: Record ->
+            .join(fg).on(f.GROUP_ID.eq(fg.ID))
+            .orderBy(
+                f.IS_SERVICE.asc(),
+                fg.SORT_ORDER.asc(),
+                f.TITLE.asc()
+            )
+            .fetch { r ->
                 Forum(
-                    id = record.get(f.ID),
-                    title = record.get(f.TITLE),
-                    description = record.get(f.DESCRIPTION) ?: "",
-                    threadsCount = record.get(f.THREADS_COUNT) ?: 0
+                    id = r.get(f.ID),
+                    title = r.get(f.TITLE),
+                    description = r.get(f.DESCRIPTION) ?: "",
+                    code = r.get(f.CODE) ?: "",
+                    threadsCount = r.get(f.THREADS_COUNT) ?: 0,
+                    groupName = r.get(fg.NAME),
+                    groupSortOrder = r.get(fg.SORT_ORDER) ?: 0,
+                    // Конвертируем Int из SQLite в Boolean
+                    isInTop = r.get(f.IS_IN_TOP) == 1,
+                    isSiteSubject = r.get(f.IS_SITE_SUBJECT) == 1,
+                    isService = r.get(f.IS_SERVICE) == 1,
+                    isRated = r.get(f.IS_RATED) == 1,
+                    rateLimit = r.get(f.RATE_LIMIT) ?: 0,
+                    isWriteAllowed = r.get(f.IS_WRITE_ALLOWED) == 1
                 )
             }
     }
 
-    fun insertAll(forums: List<Forum>) {
-        val now = (System.currentTimeMillis() / 1000).toInt() // конвертируем в Int
-        forums.forEach { forum ->
-            db.dsl.insertInto(f)
-                .columns(f.ID, f.TITLE, f.DESCRIPTION, f.THREADS_COUNT, f.SYNC_AT)
-                .values(forum.id, forum.title, forum.description, forum.threadsCount, now)
-                .execute()
-        }
-    }
-
-    fun sync(forums: List<Forum>) {
+    fun sync(apiForums: List<ForumDescription>) {
         val now = (System.currentTimeMillis() / 1000).toInt()
 
         db.dsl.transaction { config ->
-            val ctx = config.dsl()
+            val ctx = DSL.using(config)
+            val f = Forums.FORUMS
+            val fg = ForumGroups.FORUM_GROUPS
 
-            // 1. Вставляем или обновляем все пришедшие форумы
-            val upserts = forums.map { forum ->
+            // 1. Обновляем группы
+            apiForums.map { it.forumGroup }.distinctBy { it.id }.forEach { group ->
+                ctx.insertInto(fg)
+                    .set(fg.ID, group.id)
+                    .set(fg.NAME, group.name)
+                    .set(fg.SORT_ORDER, group.sortOrder)
+                    .onConflict(fg.ID).doUpdate()
+                    .set(fg.NAME, group.name)
+                    .set(fg.SORT_ORDER, group.sortOrder)
+                    .execute()
+            }
+
+            // 2. Обновляем форумы (добавляем все новые поля)
+            val queries = apiForums.map { api ->
                 ctx.insertInto(f)
-                    .set(f.ID, forum.id)
-                    .set(f.TITLE, forum.title)
-                    .set(f.DESCRIPTION, forum.description)
-                    .set(f.SYNC_AT, now) // Ставим текущее время
-                    .onConflict(f.ID)
-                    .doUpdate()
-                    .set(f.TITLE, forum.title)
-                    .set(f.DESCRIPTION, forum.description)
+                    .set(f.ID, api.id)
+                    .set(f.TITLE, api.name)
+                    .set(f.DESCRIPTION, api.description)
+                    .set(f.CODE, api.code) // <--- ПОШЛИ НОВЫЕ ПОЛЯ
+                    .set(f.GROUP_ID, api.forumGroup.id)
+                    .set(f.IS_IN_TOP, if (api.isInTop) 1 else 0)
+                    .set(f.IS_SITE_SUBJECT, if (api.isSiteSubject) 1 else 0)
+                    .set(f.IS_SERVICE, if (api.isService) 1 else 0)
+                    .set(f.IS_RATED, if (api.isRated) 1 else 0)
+                    .set(f.RATE_LIMIT, api.rateLimit)
+                    .set(f.IS_WRITE_ALLOWED, if (api.isWriteAllowed) 1 else 0)
+                    .set(f.SYNC_AT, now)
+                    .onConflict(f.ID).doUpdate()
+                    .set(f.TITLE, api.name)
+                    .set(f.DESCRIPTION, api.description)
+                    .set(f.CODE, api.code)
+                    .set(f.GROUP_ID, api.forumGroup.id)
+                    .set(f.IS_IN_TOP, if (api.isInTop) 1 else 0)
+                    .set(f.IS_SITE_SUBJECT, if (api.isSiteSubject) 1 else 0)
+                    .set(f.IS_SERVICE, if (api.isService) 1 else 0)
+                    .set(f.IS_RATED, if (api.isRated) 1 else 0)
+                    .set(f.RATE_LIMIT, api.rateLimit)
+                    .set(f.IS_WRITE_ALLOWED, if (api.isWriteAllowed) 1 else 0)
                     .set(f.SYNC_AT, now)
             }
-            ctx.batch(upserts).execute()
+            ctx.batch(queries).execute()
 
-            // 2. Удаляем те записи, которые НЕ были обновлены (у них старый SYNC_AT)
-            ctx.deleteFrom(f)
-                .where(f.SYNC_AT.lessThan(now))
-                .execute()
+            // 3. Удаляем старое
+            ctx.deleteFrom(f).where(f.SYNC_AT.lt(now)).execute()
         }
-    }
-
-    fun clear() {
-        db.dsl.deleteFrom(f).execute()
-    }
-
-    fun getCount(): Int {
-        return db.dsl.fetchCount(f)
     }
 }

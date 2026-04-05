@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.Alignment
 import org.rsdn.jana.ui.components.TopAppBarWithBack
+import org.rsdn.jana.ui.models.Forum
 
 data class Thread(
     val id: Int,

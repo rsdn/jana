@@ -6,11 +6,11 @@ import kotlinx.coroutines.withContext
 import org.rsdn.jana.api.RsdnApi
 import org.rsdn.jana.data.DatabaseManager
 import org.rsdn.jana.data.dao.ForumDao
-import org.rsdn.jana.ui.screens.Forum
+import org.rsdn.jana.ui.models.Forum
 
 private val logger = KotlinLogging.logger {}
 
-class SyncManager(private val db: DatabaseManager) {
+class SyncManager(db: DatabaseManager) {
     private val api = RsdnApi()
     private val forumDao = ForumDao(db)
 
@@ -25,11 +25,20 @@ class SyncManager(private val db: DatabaseManager) {
                         id = apiForum.id,
                         title = apiForum.name,
                         description = apiForum.description,
-                        threadsCount = 0
+                        code = apiForum.code,                   // НОВОЕ
+                        threadsCount = 0,                             // Пока 0 или сколько есть
+                        groupName = apiForum.forumGroup.name,
+                        groupSortOrder = apiForum.forumGroup.sortOrder,
+                        isInTop = apiForum.isInTop,                   // НОВОЕ
+                        isSiteSubject = apiForum.isSiteSubject,       // НОВОЕ
+                        isService = apiForum.isService,               // НОВОЕ
+                        isRated = apiForum.isRated,                   // НОВОЕ
+                        rateLimit = apiForum.rateLimit,               // НОВОЕ
+                        isWriteAllowed = apiForum.isWriteAllowed      // НОВОЕ
                     )
                 }
 
-                forumDao.sync(forums)
+                forumDao.sync(apiForums)
                 logger.info { "Saved ${forums.size} forums to DB" }
             } else {
                 logger.warn { "API returned empty forums list" }

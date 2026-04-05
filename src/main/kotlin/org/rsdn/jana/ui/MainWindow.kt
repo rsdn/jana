@@ -19,6 +19,7 @@ import org.rsdn.jana.data.dao.ForumDao
 import org.rsdn.jana.org.rsdn.jana.ui.screens.OutboxScreen
 import org.rsdn.jana.org.rsdn.jana.ui.screens.WatchedScreen
 import org.rsdn.jana.sync.SyncManager
+import org.rsdn.jana.ui.models.Forum
 import org.rsdn.jana.ui.screens.*
 
 @OptIn(ExperimentalMaterial3Api::class)
