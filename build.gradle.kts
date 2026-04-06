@@ -1,5 +1,8 @@
 import nu.studer.gradle.jooq.JooqEdition
 
+group = "org.rsdn.jana"
+version = "1.0.0-alpha"
+
 plugins {
     kotlin("jvm") version "2.3.0"
     kotlin("plugin.serialization") version "2.3.0"
@@ -137,5 +140,13 @@ sourceSets {
         kotlin {
             srcDir("build/generated/source/jooq/main")
         }
+    }
+}
+
+tasks.processResources {
+    doLast {
+        val resourcesDir = destinationDir
+        val versionFile = File(resourcesDir, "version.properties")
+        versionFile.writeText("version=${project.version}")
     }
 }

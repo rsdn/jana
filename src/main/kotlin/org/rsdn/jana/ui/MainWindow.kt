@@ -16,6 +16,7 @@ import org.rsdn.jana.org.rsdn.jana.ui.screens.OutboxScreen
 import org.rsdn.jana.org.rsdn.jana.ui.screens.WatchedScreen
 import org.rsdn.jana.resources.*
 import org.rsdn.jana.sync.SyncManager
+import org.rsdn.jana.ui.components.AboutDialog
 import org.rsdn.jana.ui.components.ErrorBanner
 import org.rsdn.jana.ui.components.ServerStatus
 import org.rsdn.jana.ui.components.ServerStatusIndicator
@@ -35,6 +36,7 @@ fun MainWindow(
     val syncManager = remember { SyncManager(db) }
     val scope = rememberCoroutineScope()
     val forumDao = remember { ForumDao(db) }
+    var showAbout by remember { mutableStateOf(false) }
 
     var forums by remember { mutableStateOf<List<Forum>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -122,6 +124,13 @@ fun MainWindow(
                                             )
                                         }
                                     }
+
+                                    IconButton(onClick = { showAbout = true }) {
+                                        Icon(
+                                            painter = painterResource(Res.drawable.ic_info), // Убедись, что ic_info есть в ресурсах
+                                            contentDescription = "О программе"
+                                        )
+                                    }
                                 }
                             )
                         }
@@ -182,6 +191,9 @@ fun MainWindow(
                     }
                 }
             }
+        }
+        if (showAbout) {
+            AboutDialog(onDismiss = { showAbout = false })
         }
     }
 }
