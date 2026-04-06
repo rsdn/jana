@@ -1,9 +1,6 @@
 package org.rsdn.jana.ui.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -12,8 +9,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.painterResource
+import org.rsdn.jana.resources.*
 import org.rsdn.jana.ui.models.Forum
-import org.rsdn.jana.ui.utils.getIcon // Наш новый маппер
+import org.rsdn.jana.ui.utils.getIconPainter // Используем версию с Painter
 
 @Composable
 fun ForumCard(
@@ -33,16 +32,15 @@ fun ForumCard(
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.Top // Выравнивание по верху для многострочных названий
+            verticalAlignment = Alignment.Top
         ) {
-            // 1. ИКОНКА ФОРУМА
+            // 1. ИКОНКА ФОРУМА (через наш маппер ресурсов)
             Icon(
-                imageVector = forum.getIcon(),
+                painter = forum.getIconPainter(),
                 contentDescription = null,
                 modifier = Modifier
                     .size(24.dp)
                     .padding(top = 2.dp),
-                // Если форум официальный — иконка в цвете Primary, иначе — чуть приглушенная
                 tint = if (isPrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
 
@@ -64,17 +62,21 @@ fun ForumCard(
                         modifier = Modifier.weight(1f, fill = false)
                     )
 
+                    // Иконка "TOP"
                     if (forum.isInTop) {
                         Icon(
-                            Icons.Default.Star, "Top",
+                            painter = painterResource(Res.drawable.ic_star),
+                            contentDescription = "Top",
                             tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
 
+                    // Иконка "Read Only"
                     if (!forum.isWriteAllowed) {
                         Icon(
-                            Icons.Default.Lock, "Read Only",
+                            painter = painterResource(Res.drawable.ic_lock),
+                            contentDescription = "Read Only",
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(14.dp)
                         )
@@ -93,12 +95,11 @@ fun ForumCard(
                     )
                 }
 
-                // 4. НИЖНЯЯ ПАНЕЛЬ: CODE + RATE + THREADS
+                // 4. НИЖНЯЯ ПАНЕЛЬ
                 Row(
                     modifier = Modifier.padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Чипса кода (делаем чуть меньше отступы, чтобы было компактнее)
                     Surface(
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
                         shape = MaterialTheme.shapes.extraSmall
@@ -123,7 +124,6 @@ fun ForumCard(
 
                     Spacer(Modifier.weight(1f))
 
-                    // Счетчик сообщений
                     Text(
                         text = forum.threadsCount.toString(),
                         style = MaterialTheme.typography.labelSmall,

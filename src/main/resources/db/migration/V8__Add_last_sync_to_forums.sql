@@ -1,0 +1,1 @@
+ALTER TABLE forums ADD COLUMN last_sync_at INTEGER;

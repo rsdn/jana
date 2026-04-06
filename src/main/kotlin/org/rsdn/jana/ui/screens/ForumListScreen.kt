@@ -3,6 +3,7 @@ package org.rsdn.jana.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -12,14 +13,12 @@ import org.rsdn.jana.ui.components.ForumCard
 import org.rsdn.jana.ui.components.ForumGroupHeader
 import org.rsdn.jana.ui.models.Forum
 import org.rsdn.jana.utils.SetSaver
-import androidx.compose.foundation.lazy.items
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ForumListScreen(
-    forums: List<Forum>,
-    modifier: Modifier = Modifier,
-    onForumClick: (Forum) -> Unit
+    forums: List<Forum>,          // Ожидаем список (Actual type: List<Forum>)
+    onForumClick: (Forum) -> Unit // Лямбда для клика
 ) {
     val expandedGroups = rememberSaveable(saver = SetSaver()) {
         mutableStateOf(setOf())
@@ -28,7 +27,7 @@ fun ForumListScreen(
     val grouped = forums.groupBy { it.groupName }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {

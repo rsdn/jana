@@ -13,5 +13,6 @@ data class Forum(
     val isService: Boolean,
     val isRated: Boolean,
     val rateLimit: Int,
-    val isWriteAllowed: Boolean
+    val isWriteAllowed: Boolean,
+    val lastSyncAt: Long? = null
 )

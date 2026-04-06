@@ -17,7 +17,7 @@ class DatabaseManager(private val dbPath: String = "jana.db") {
         private set
 
     init {
-        println("[DB] Instance created: ${this.hashCode()}")
+        logger.info { "[DB] Instance created: ${this.hashCode()}" }
     }
 
     fun connect() {

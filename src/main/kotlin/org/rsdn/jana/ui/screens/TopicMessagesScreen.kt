@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.rsdn.jana.ui.components.TopAppBarWithBack
+import org.rsdn.jana.ui.models.Topic
 
 data class Message(
     val id: Int,
@@ -20,8 +21,8 @@ data class Message(
 )
 
 @Composable
-fun ThreadMessagesScreen(
-    thread: Thread,
+fun TopicMessagesScreen(
+    topic: Topic,
     onBack: () -> Unit,
     onReply: (Int?) -> Unit // parentMessageId или null для ответа в тему
 ) {
@@ -45,7 +46,7 @@ fun ThreadMessagesScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBarWithBack(
-            title = thread.title,
+            title = topic.title,
             onBack = onBack
         )
 

@@ -3,8 +3,6 @@ package org.rsdn.jana.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -12,6 +10,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.painterResource
+import org.rsdn.jana.resources.*
 
 @Composable
 fun ForumGroupHeader(
@@ -19,7 +19,7 @@ fun ForumGroupHeader(
     isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
-    // Анимация поворота стрелочки на 90 градусов
+    // Анимация поворота стрелочки на 90 градусов (вниз)
     val rotationState by animateFloatAsState(
         targetValue = if (isExpanded) 90f else 0f,
         label = "ArrowRotation"
@@ -29,7 +29,7 @@ fun ForumGroupHeader(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onToggle() },
-        // Используем чуть более темный или акцентный фон для заголовка
+        // Приятный акцентный фон для отделения групп
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
         shape = MaterialTheme.shapes.small
     ) {
@@ -38,9 +38,9 @@ fun ForumGroupHeader(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Иконка-стрелочка с анимацией
+            // Иконка-стрелочка из твоих XML ресурсов
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                painter = painterResource(Res.drawable.ic_chevron_right),
                 contentDescription = if (isExpanded) "Свернуть" else "Развернуть",
                 modifier = Modifier
                     .size(20.dp)
