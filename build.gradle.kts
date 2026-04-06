@@ -58,6 +58,12 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     implementation("io.ktor:ktor-client-logging:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("io.ktor:ktor-server-core:${ktorVersion}")
+    implementation("io.ktor:ktor-server-netty:${ktorVersion}")
+    implementation("io.ktor:ktor-server-host-common:${ktorVersion}")
+
+    implementation("io.coil-kt.coil3:coil-compose:3.4.0")
+    implementation("io.coil-kt.coil3:coil-network-ktor3:3.4.0")
 }
 
 sourceSets {

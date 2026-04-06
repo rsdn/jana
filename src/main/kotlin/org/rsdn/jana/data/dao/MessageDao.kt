@@ -3,7 +3,7 @@ package org.rsdn.jana.data.dao
 import org.jooq.impl.DSL
 import org.jooq.impl.DSL.field
 import org.rsdn.jana.data.DatabaseManager
-import org.rsdn.jana.api.MessageInfo
+import org.rsdn.jana.api.dtos.MessageInfo
 import org.rsdn.jana.ui.models.Topic
 import java.time.Instant
 

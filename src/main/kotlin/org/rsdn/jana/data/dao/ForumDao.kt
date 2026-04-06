@@ -4,7 +4,7 @@ import org.jooq.impl.DSL
 import org.rsdn.jana.data.DatabaseManager
 import org.rsdn.jana.data.jooq.tables.references.FORUMS // Используем современный путь к таблицам
 import org.rsdn.jana.data.jooq.tables.references.FORUM_GROUPS
-import org.rsdn.jana.api.ForumDescription
+import org.rsdn.jana.api.dtos.ForumDescription
 import org.rsdn.jana.ui.models.Forum
 
 class ForumDao(private val db: DatabaseManager) {

@@ -19,7 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import org.rsdn.jana.api.RsdnApi
-import org.rsdn.jana.api.ServiceInfo
+import org.rsdn.jana.api.dtos.ServiceInfo
 import org.rsdn.jana.resources.Res
 import org.rsdn.jana.resources.ic_close // ТВОЯ иконка (проверь, что в drawable лежит современный SVG/XML)
 import org.rsdn.jana.resources.splash
