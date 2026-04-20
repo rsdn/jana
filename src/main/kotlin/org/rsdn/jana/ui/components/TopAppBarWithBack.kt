@@ -11,7 +11,8 @@ import org.rsdn.jana.resources.*
 @Composable
 fun TopAppBarWithBack(
     title: String,
-    subtitle: String? = null, // НОВОЕ
+    subtitle: String? = null,
+    depthInfo: Int? = null,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -20,13 +21,19 @@ fun TopAppBarWithBack(
         title = {
             Column {
                 Text(title)
-                if (subtitle != null) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                // Всегда резервируем место под subtitle, чтобы избежать дёргания
+                Text(
+                    text = when {
+                        depthInfo != null && depthInfo > 0 -> "Уровень $depthInfo+"
+                        subtitle != null -> subtitle
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = when {
+                        depthInfo != null && depthInfo > 0 -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
             }
         },
         navigationIcon = {

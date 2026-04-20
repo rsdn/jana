@@ -73,44 +73,35 @@ fun TopicMessagesScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBarWithBack(
             title = topic.title,
-            onBack = onBack
-        )
-
-        // Плавающий индикатор сдвинутого скролла
-        if (depthOffset > 0) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                shadowElevation = 4.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(
-                        onClick = {
-                            // Возврат к корню - НЕ сворачиваем ветку, только сбрасываем текст
-                            deepBranchNodeId?.let { id ->
-                                resetBranchTextExpanded(rootNodes, id)
-                            }
-                            deepBranchNodeId = null
-                            deepBranchRootNode = null
-                            depthOffset = 0
-                            flatList.clear()
-                            flatList.addAll(flattenMessageTree(rootNodes))
-                        }
-                    ) {
-                        Text("◀ Вернуться к началу")
+            depthInfo = depthOffset,
+            onBack = {
+                if (depthOffset > 0) {
+                    // Возврат из глубокой ветки - НЕ сворачиваем ветку, только сбрасываем текст
+                    deepBranchNodeId?.let { id ->
+                        resetBranchTextExpanded(rootNodes, id)
                     }
-                    Text(
-                        text = "Уровень $depthOffset+",
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                    deepBranchNodeId = null
+                    deepBranchRootNode = null
+                    depthOffset = 0
+                    flatList.clear()
+                    flatList.addAll(flattenMessageTree(rootNodes))
+                } else {
+                    // Выход из топика
+                    onBack()
                 }
             }
+        )
+
+        // Показываем ошибку в баннере, если есть
+        if (errorMessage != null) {
+            ErrorBanner(
+                message = errorMessage!!,
+                onRetry = {
+                    errorMessage = null
+                    // Повторная синхронизация
+                },
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            )
         }
 
         if (isLoading && flatList.isEmpty()) {
@@ -119,20 +110,6 @@ fun TopicMessagesScreen(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
-            }
-            return@Column
-        }
-
-        if (errorMessage != null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = errorMessage!!,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
-                )
             }
             return@Column
         }

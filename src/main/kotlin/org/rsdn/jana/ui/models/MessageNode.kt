@@ -7,7 +7,7 @@ import org.rsdn.jana.data.models.MessageInfoDto
 /**
  * Максимальная глубина отображения дерева без "туннелирования"
  */
-const val MAX_DISPLAY_DEPTH = 10
+const val MAX_DISPLAY_DEPTH = 5
 
 /**
  * Узел дерева сообщений
