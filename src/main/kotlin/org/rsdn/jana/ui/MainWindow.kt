@@ -79,14 +79,20 @@ fun MainWindow(onClose: () -> Unit, db: DatabaseManager) {
                         Box(Modifier.fillMaxSize()) {
                             when {
                                 state.currentTopic != null -> TopicMessagesScreen(
-                                    state.currentTopic!!,
-                                    { state.currentTopic = null },
-                                    {}
+                                    topic = state.currentTopic!!,
+                                    onBack = { state.currentTopic = null },
+                                    onReply = { parentId -> 
+                                        // TODO: Реализовать ответ на сообщение
+                                        println("Ответ на сообщение $parentId")
+                                    },
+                                    db = db,
+                                    syncManager = state.syncManager
                                 )
                                 state.currentForum != null -> TopicListScreen(
                                     state.currentForum!!, db, state.syncManager,
                                     { state.currentForum = null },
-                                    { state.currentTopic = it }
+                                    { state.currentTopic = it },
+                                    state.topicListScrollPositions
                                 )
                                 else -> when (state.selectedTab) {
                                     0 -> ForumListScreen(state.forums) { state.currentForum = it }

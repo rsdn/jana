@@ -30,6 +30,9 @@ class MainState(
     var selectedTab by mutableIntStateOf(0)
     var currentForum by mutableStateOf<Forum?>(null)
     var currentTopic by mutableStateOf<Topic?>(null)
+    
+    // Карта позиций скроллинга для каждого форума (ключ = forum.id)
+    val topicListScrollPositions = mutableMapOf<Int, Pair<Int, Int>>()
 
     /**
      * Первичная загрузка и запуск фонового чека сервера

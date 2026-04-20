@@ -4,6 +4,7 @@ import org.jooq.impl.DSL
 import org.jooq.impl.DSL.field
 import org.rsdn.jana.data.DatabaseManager
 import org.rsdn.jana.api.dtos.MessageInfo
+import org.rsdn.jana.data.models.MessageInfoDto
 import org.rsdn.jana.ui.models.Topic
 import java.time.Instant
 
@@ -41,6 +42,32 @@ class MessageDao(private val db: DatabaseManager) {
                     repliesCount = r.get("answers_count", Int::class.java) ?: 0,
                     // Читаем из базы уже как Long
                     lastActivity = r.get("updated_on", Long::class.java) ?: r.get("created_on", Long::class.java) ?: 0L
+                )
+            }
+    }
+
+    /**
+     * Получить все сообщения топика из БД
+     * Возвращает плоский список сообщений
+     */
+    fun getMessagesByTopic(topicId: Int): List<MessageInfoDto> {
+        return db.dsl.select()
+            .from(DSL.table("messages"))
+            .where(field("topic_id").eq(topicId))
+            .orderBy(field("created_on").asc()) // Хронологический порядок
+            .fetch { r ->
+                MessageInfoDto(
+                    id = r.get("id", Int::class.java) ?: 0,
+                    forumID = r.get("forum_id", Int::class.java) ?: 0,
+                    topicID = r.get("topic_id", Int::class.java) ?: 0,
+                    parentID = r.get("parent_id", Int::class.java),
+                    subject = r.get("subject", String::class.java) ?: "",
+                    userName = r.get("user_name", String::class.java) ?: "Аноним",
+                    userId = r.get("user_id", Int::class.java),
+                    isTopic = r.get("is_topic", Int::class.java) == 1,
+                    answersCount = r.get("answers_count", Int::class.java) ?: 0,
+                    createdOn = r.get("created_on", Long::class.java) ?: 0L,
+                    updatedOn = r.get("updated_on", Long::class.java) ?: 0L
                 )
             }
     }
