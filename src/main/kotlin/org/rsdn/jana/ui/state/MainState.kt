@@ -12,7 +12,7 @@ import org.rsdn.jana.ui.models.Forum
 import org.rsdn.jana.ui.models.Topic
 
 class MainState(
-    private val db: DatabaseManager,
+    db: DatabaseManager,
     private val scope: CoroutineScope
 ) {
     val syncManager = SyncManager(db)
@@ -30,6 +30,9 @@ class MainState(
     var selectedTab by mutableIntStateOf(0)
     var currentForum by mutableStateOf<Forum?>(null)
     var currentTopic by mutableStateOf<Topic?>(null)
+    
+    // URL при наведении на ссылку (для статус-бара)
+    var hoveredUrl by mutableStateOf<String?>(null)
     
     // Карта позиций скроллинга для каждого форума (ключ = forum.id)
     val topicListScrollPositions = mutableMapOf<Int, Pair<Int, Int>>()

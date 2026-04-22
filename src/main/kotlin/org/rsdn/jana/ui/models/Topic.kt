@@ -4,6 +4,7 @@ data class Topic(
     val id: Int,
     val title: String,
     val author: String,
+    val authorGravatarHash: String?,
     val repliesCount: Int,
     val lastActivity: Long
 )

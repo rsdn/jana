@@ -130,6 +130,7 @@ fun TopicListScreen(
                 TopicCard(
                     topic = topic,
                     dateText = formatDate(topic.lastActivity),
+                    db = db,
                     onClick = { onTopicClick(topic) }
                 )
                 SideEffect { lastSeenIndex = index }

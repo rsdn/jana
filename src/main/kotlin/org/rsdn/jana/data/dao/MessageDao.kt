@@ -3,10 +3,12 @@ package org.rsdn.jana.data.dao
 import org.jooq.impl.DSL
 import org.jooq.impl.DSL.field
 import org.rsdn.jana.data.DatabaseManager
+import org.rsdn.jana.api.dtos.MessageBodyDto
 import org.rsdn.jana.api.dtos.MessageInfo
 import org.rsdn.jana.data.models.MessageInfoDto
 import org.rsdn.jana.ui.models.Topic
 import java.time.Instant
+import java.time.LocalDateTime
 
 class MessageDao(private val db: DatabaseManager) {
 
@@ -20,7 +22,7 @@ class MessageDao(private val db: DatabaseManager) {
             try {
                 // 2. Если Z нет, парсим как LocalDateTime и считаем, что это UTC (или локальное)
                 // В RSDN API обычно время сервера (МСК)
-                java.time.LocalDateTime.parse(isoStr)
+                LocalDateTime.parse(isoStr)
                     .toEpochSecond(java.time.ZoneOffset.ofHours(3)) // МСК это +3
             } catch (_: Exception) {
                 0L
@@ -39,6 +41,7 @@ class MessageDao(private val db: DatabaseManager) {
                     id = r.get("id", Int::class.java) ?: 0,
                     title = r.get("subject", String::class.java) ?: "Без темы",
                     author = r.get("user_name", String::class.java) ?: "Аноним",
+                    authorGravatarHash = r.get("gravatar_hash", String::class.java),
                     repliesCount = r.get("answers_count", Int::class.java) ?: 0,
                     // Читаем из базы уже как Long
                     lastActivity = r.get("updated_on", Long::class.java) ?: r.get("created_on", Long::class.java) ?: 0L
@@ -47,7 +50,7 @@ class MessageDao(private val db: DatabaseManager) {
     }
 
     /**
-     * Получить все сообщения топика из БД
+     * Получить все сообщения топика из БД.
      * Возвращает плоский список сообщений
      */
     fun getMessagesByTopic(topicId: Int): List<MessageInfoDto> {
@@ -64,10 +67,12 @@ class MessageDao(private val db: DatabaseManager) {
                     subject = r.get("subject", String::class.java) ?: "",
                     userName = r.get("user_name", String::class.java) ?: "Аноним",
                     userId = r.get("user_id", Int::class.java),
+                    gravatarHash = r.get("gravatar_hash", String::class.java),
                     isTopic = r.get("is_topic", Int::class.java) == 1,
                     answersCount = r.get("answers_count", Int::class.java) ?: 0,
                     createdOn = r.get("created_on", Long::class.java) ?: 0L,
-                    updatedOn = r.get("updated_on", Long::class.java) ?: 0L
+                    updatedOn = r.get("updated_on", Long::class.java) ?: 0L,
+                    bodyLength = r.get("body_length", Int::class.java) ?: 0
                 )
             }
     }
@@ -88,6 +93,7 @@ class MessageDao(private val db: DatabaseManager) {
                     .set(field("subject"), msg.subject ?: "")
                     .set(field("user_name"), msg.author?.displayName ?: "Аноним")
                     .set(field("user_id"), msg.author?.id)
+                    .set(field("gravatar_hash"), msg.author?.gravatarHash)
                     .set(field("is_topic"), if (msg.isTopic) 1 else 0)
                     .set(field("answers_count"), msg.answersCount ?: 0)
                     .set(field("created_on"), createdTs) // Пишем число
@@ -97,8 +103,50 @@ class MessageDao(private val db: DatabaseManager) {
                     .set(field("subject"), msg.subject ?: "")
                     .set(field("answers_count"), msg.answersCount ?: 0)
                     .set(field("updated_on"), updatedTs)
+                    .set(field("gravatar_hash"), msg.author?.gravatarHash)
                     .execute()
             }
         }
+    }
+
+    /**
+     * Сохранить тело сообщения в кеш
+     */
+    fun saveMessageBody(message: MessageBodyDto) {
+        val t = DSL.table("messages")
+        val htmlBody = message.body?.text
+        val updatedTs = parseIsoToLong(message.updatedOn ?: message.createdOn)
+        val bodyLength = htmlBody?.length ?: 0
+
+        db.dsl.update(t)
+            .set(field("body"), htmlBody)
+            .set(field("body_length"), bodyLength)
+            .set(field("updated_on"), updatedTs)
+            .where(field("id").eq(message.id))
+            .execute()
+    }
+
+    /**
+     * Получить тело сообщения из кеша
+     * @return HTML тело сообщения или null если нет в кеше
+     */
+    fun getMessageBody(messageId: Int): String? {
+        val t = DSL.table("messages")
+        return db.dsl.select(field("body"))
+            .from(t)
+            .where(field("id").eq(messageId))
+            .fetchOne { r -> r.get("body", String::class.java) }
+    }
+
+    /**
+     * Проверить, есть ли тело сообщения в кеше
+     */
+    fun hasMessageBody(messageId: Int): Boolean {
+        val t = DSL.table("messages")
+        val body = db.dsl.select(field("body"))
+            .from(t)
+            .where(field("id").eq(messageId))
+            .fetchOne { r -> r.get("body", String::class.java) }
+        return !body.isNullOrBlank()
     }
 }

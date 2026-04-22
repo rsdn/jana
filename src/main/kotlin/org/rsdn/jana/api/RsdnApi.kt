@@ -13,6 +13,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import org.rsdn.jana.api.dtos.Account
 import org.rsdn.jana.api.dtos.ForumDescription
+import org.rsdn.jana.api.dtos.MessageBodyDto
 import org.rsdn.jana.api.dtos.MessageInfoPagedResult
 import org.rsdn.jana.api.dtos.ServiceInfo
 
@@ -91,6 +92,18 @@ class RsdnApi(val token: String? = null) : AutoCloseable {
             parameter("limit", limit)
             parameter("offset", offset)
             parameter("order", 0) // хронологический порядок для сообщений
+        }.body()
+    }
+
+    /**
+     * Получить сообщение по ID с телом
+     * @param messageId ID сообщения
+     * @return Полное сообщение с телом в формате HTML
+     */
+    suspend fun getMessageBody(messageId: Int): MessageBodyDto {
+        return client.get("messages/$messageId") {
+            parameter("withBodies", true)
+            parameter("formatBody", true)
         }.body()
     }
 

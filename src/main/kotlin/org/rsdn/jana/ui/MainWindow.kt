@@ -36,7 +36,9 @@ fun MainWindow(onClose: () -> Unit, db: DatabaseManager) {
                     CircularProgressIndicator(strokeWidth = 2.dp)
                 }
             } else {
-                Scaffold(
+                Column(Modifier.fillMaxSize()) {
+                    Scaffold(
+                        modifier = Modifier.weight(1f),
                     topBar = {
                         if (state.currentForum == null && state.currentTopic == null) {
                             MainTopAppBar(
@@ -86,7 +88,9 @@ fun MainWindow(onClose: () -> Unit, db: DatabaseManager) {
                                         println("Ответ на сообщение $parentId")
                                     },
                                     db = db,
-                                    syncManager = state.syncManager
+                                    syncManager = state.syncManager,
+                                    authToken = state.authState.token,
+                                    onLinkHover = { url -> state.hoveredUrl = url }
                                 )
                                 state.currentForum != null -> TopicListScreen(
                                     state.currentForum!!, db, state.syncManager,
@@ -102,6 +106,9 @@ fun MainWindow(onClose: () -> Unit, db: DatabaseManager) {
                             }
                         }
                     }
+                }
+                // Статус-бар внизу окна
+                StatusBar(hoveredUrl = state.hoveredUrl)
                 }
             }
         }

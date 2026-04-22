@@ -104,6 +104,11 @@ private fun buildNode(
     // Устанавливаем глубину и путь к корню напрямую (без copy)
     node.depth = pathToRoot.size
     node.pathToRoot = pathToRoot
+    
+    // Разворачиваем текст первого сообщения темы по умолчанию
+    if (message.isTopic && parentNode == null) {
+        node.isTextExpanded.value = true
+    }
 
     return node
 }

@@ -87,6 +87,9 @@ dependencies {
 
     implementation("io.coil-kt.coil3:coil-compose:3.4.0")
     implementation("io.coil-kt.coil3:coil-network-ktor3:3.4.0")
+
+    // HTML parsing for message body rendering
+    implementation("org.jsoup:jsoup:1.18.3")
 }
 
 sourceSets {

@@ -1,14 +1,18 @@
 package org.rsdn.jana.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
+import org.rsdn.jana.data.DatabaseManager
 import org.rsdn.jana.resources.Res
 import org.rsdn.jana.resources.ic_chat
 import org.rsdn.jana.resources.ic_person
@@ -18,7 +22,9 @@ import org.rsdn.jana.ui.models.Topic
 fun TopicCard(
     topic: Topic,
     dateText: String,
-    onClick: () -> Unit) {
+    db: DatabaseManager,
+    onClick: () -> Unit
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -51,11 +57,11 @@ fun TopicCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_person),
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.outline
+                    // Граватар автора с кешированием (показывает placeholder если hash null)
+                    GravatarImage(
+                        gravatarHash = topic.authorGravatarHash,
+                        size = 16.dp,
+                        db = db
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(

@@ -11,8 +11,10 @@ data class MessageInfoDto(
     val subject: String,
     val userName: String,
     val userId: Int?,
+    val gravatarHash: String?,
     val isTopic: Boolean,
     val answersCount: Int,
     val createdOn: Long,
-    val updatedOn: Long
+    val updatedOn: Long,
+    val bodyLength: Int = 0
 )

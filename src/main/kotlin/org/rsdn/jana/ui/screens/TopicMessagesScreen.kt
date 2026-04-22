@@ -4,17 +4,25 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import org.rsdn.jana.api.RsdnApi
 import org.rsdn.jana.data.DatabaseManager
 import org.rsdn.jana.data.dao.MessageDao
 import org.rsdn.jana.sync.SyncManager
-import org.rsdn.jana.ui.components.*
+import org.rsdn.jana.ui.components.ErrorBanner
+import org.rsdn.jana.ui.components.MessageCard
+import org.rsdn.jana.ui.components.QuickReplyField
+import org.rsdn.jana.ui.components.TopAppBarWithBack
 import org.rsdn.jana.ui.models.*
+import org.rsdn.jana.ui.utils.HtmlToComposeConverter
 
 /**
  * Экран сообщений топика с древовидной структурой
@@ -25,9 +33,22 @@ fun TopicMessagesScreen(
     onBack: () -> Unit,
     onReply: (Int?) -> Unit,
     db: DatabaseManager,
-    syncManager: SyncManager
+    syncManager: SyncManager,
+    authToken: String?,
+    onLinkHover: ((String?) -> Unit)? = null
 ) {
     val messageDao = remember { MessageDao(db) }
+    val scope = rememberCoroutineScope()
+    val htmlConverter = remember { HtmlToComposeConverter() }
+    
+    // Кеш тел сообщений: messageId -> List<ComposeElement>
+    val messageBodies = remember { mutableStateMapOf<Int, List<ComposeElement>>() }
+    // Загружаемые сообщения
+    val loadingBodies = remember { mutableStateSetOf<Int>() }
+    // Загружаемые размеры тел (для видимых сообщений)
+    val loadingBodySizes = remember { mutableStateSetOf<Int>() }
+    // Кеш размеров тел: messageId -> bodyLength
+    val bodyLengths = remember { mutableStateMapOf<Int, Int>() }
     
     var isLoading by remember { mutableStateOf(true) }
     var rootNodes by remember { mutableStateOf<List<MessageNode>>(emptyList()) }
@@ -132,6 +153,14 @@ fun TopicMessagesScreen(
             flatList = flatList,
             depthOffset = depthOffset,
             scrollPositions = scrollPositions,
+            messageBodies = messageBodies,
+            loadingBodies = loadingBodies,
+            loadingBodySizes = loadingBodySizes,
+            bodyLengths = bodyLengths,
+            messageDao = messageDao,
+            authToken = authToken,
+            htmlConverter = htmlConverter,
+            onLinkHover = onLinkHover,
             onReply = onReply,
             onToggleExpand = { messageId ->
                 toggleNodeExpanded(rootNodes, messageId)
@@ -167,10 +196,67 @@ fun TopicMessagesScreen(
                     flatList.clear()
                     flatList.addAll(flattenSubtree(node))
                 }
-            }
+            },
+            onLoadBody = { messageId ->
+                scope.launch {
+                    loadMessageBody(
+                        messageId = messageId,
+                        authToken = authToken,
+                        messageDao = messageDao,
+                        htmlConverter = htmlConverter,
+                        messageBodies = messageBodies,
+                        loadingBodies = loadingBodies
+                    )
+                }
+            },
+            db = db
         )
 
         QuickReplyField(onSend = { onReply(null) })
+    }
+}
+
+/**
+ * Загрузка тела сообщения
+ */
+private suspend fun loadMessageBody(
+    messageId: Int,
+    authToken: String?,
+    messageDao: MessageDao,
+    htmlConverter: HtmlToComposeConverter,
+    messageBodies: MutableMap<Int, List<ComposeElement>>,
+    loadingBodies: MutableSet<Int>
+) {
+    if (loadingBodies.contains(messageId)) return
+    
+    loadingBodies.add(messageId)
+    
+    try {
+        // Сначала проверяем кеш в БД
+        val cachedBody = messageDao.getMessageBody(messageId)
+        if (!cachedBody.isNullOrBlank()) {
+            val elements = htmlConverter.convert(cachedBody)
+            messageBodies[messageId] = elements
+            return
+        }
+        
+        // Загружаем с API
+        val api = RsdnApi(authToken)
+        val messageBodyDto = api.getMessageBody(messageId)
+        api.close()
+        
+        val htmlBody = messageBodyDto.body?.text
+        if (!htmlBody.isNullOrBlank()) {
+            // Сохраняем в кеш
+            messageDao.saveMessageBody(messageBodyDto)
+            // Конвертируем и кешируем в памяти
+            val elements = htmlConverter.convert(htmlBody)
+            messageBodies[messageId] = elements
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    } finally {
+        loadingBodies.remove(messageId)
     }
 }
 
@@ -182,12 +268,23 @@ private fun MessageTreeList(
     flatList: SnapshotStateList<MessageNode>,
     depthOffset: Int = 0,
     scrollPositions: MutableMap<Int, Pair<Int, Int>>,
+    messageBodies: MutableMap<Int, List<ComposeElement>>,
+    loadingBodies: MutableSet<Int>,
+    loadingBodySizes: MutableSet<Int>,
+    bodyLengths: MutableMap<Int, Int>,
+    messageDao: MessageDao,
+    authToken: String?,
+    htmlConverter: HtmlToComposeConverter,
+    onLinkHover: ((String?) -> Unit)?,
     onReply: (Int?) -> Unit,
     onToggleExpand: (Int) -> Unit,
     onToggleTextExpand: (Int) -> Unit,
-    onExpandDeepBranch: (Int) -> Unit
+    onExpandDeepBranch: (Int) -> Unit,
+    onLoadBody: (Int) -> Unit,
+    db: DatabaseManager
 ) {
     val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     
     // Восстанавливаем позицию при смене уровня глубины
     LaunchedEffect(depthOffset) {
@@ -200,6 +297,69 @@ private fun MessageTreeList(
     // Сохраняем позицию скроллинга при изменении
     LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset, depthOffset) {
         scrollPositions[depthOffset] = Pair(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+    }
+    
+    // Загрузка тел видимых сообщений (только для размера)
+    LaunchedEffect(listState.layoutInfo.visibleItemsInfo, flatList.toList()) {
+        val visibleNodes = listState.layoutInfo.visibleItemsInfo.mapNotNull { info ->
+            flatList.getOrNull(info.index)
+        }
+        
+        // Загружаем тела для видимых сообщений где нет тела
+        visibleNodes.forEach { node ->
+            val messageId = node.message.id
+            // Пропускаем если уже загружено или загружается
+            if (!messageBodies.containsKey(messageId) && 
+                !loadingBodies.contains(messageId) && 
+                !loadingBodySizes.contains(messageId) &&
+                !messageDao.hasMessageBody(messageId)) {
+                // Загружаем только размер (тело сообщения)
+                loadingBodySizes.add(messageId)
+                scope.launch {
+                    try {
+                        val cachedBody = messageDao.getMessageBody(messageId)
+                        if (!cachedBody.isNullOrBlank()) {
+                            val elements = htmlConverter.convert(cachedBody)
+                            messageBodies[messageId] = elements
+                            val size = elements.sumOf { element ->
+                                when (element) {
+                                    is ComposeElement.Paragraph -> element.segments.sumOf { 
+                                        when (it) {
+                                            is ComposeElement.ParagraphSegment.Text -> it.text.length
+                                            is ComposeElement.ParagraphSegment.Link -> it.text.length
+                                        }
+                                    }
+                                    is ComposeElement.CodeBlock -> element.code.length
+                                    is ComposeElement.BlockQuote -> 100
+                                    is ComposeElement.ListBlock -> element.items.size * 50
+                                    is ComposeElement.Table -> element.rows.sumOf { it.cells.size * 20 }
+                                    else -> 50
+                                }
+                            }
+                            bodyLengths[messageId] = size
+                        } else {
+                            // Загружаем с API
+                            val api = RsdnApi(authToken)
+                            val messageBodyDto = api.getMessageBody(messageId)
+                            api.close()
+                            
+                            val htmlBody = messageBodyDto.body?.text
+                            if (!htmlBody.isNullOrBlank()) {
+                                messageDao.saveMessageBody(messageBodyDto)
+                                val elements = htmlConverter.convert(htmlBody)
+                                messageBodies[messageId] = elements
+                                val size = htmlBody.length
+                                bodyLengths[messageId] = size
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        loadingBodySizes.remove(messageId)
+                    }
+                }
+            }
+        }
     }
 
     LazyColumn(
@@ -221,9 +381,16 @@ private fun MessageTreeList(
                 MessageCard(
                     node = node,
                     depthOffset = depthOffset,
+                    db = db,
                     onReply = { onReply(node.message.id) },
                     onToggleExpand = { onToggleExpand(node.message.id) },
-                    onToggleTextExpand = { onToggleTextExpand(node.message.id) }
+                    onToggleTextExpand = { onToggleTextExpand(node.message.id) },
+                    messageBody = messageBodies[node.message.id],
+                    isLoadingBody = loadingBodies.contains(node.message.id),
+                    isLoadingBodySize = loadingBodySizes.contains(node.message.id),
+                    bodyLength = bodyLengths[node.message.id] ?: node.message.bodyLength,
+                    onLoadBody = { onLoadBody(node.message.id) },
+                    onLinkHover = onLinkHover
                 )
             } else {
                 // depthOffset == 0, показываем всё как обычно
@@ -240,10 +407,17 @@ private fun MessageTreeList(
                     MessageCard(
                         node = node,
                         depthOffset = depthOffset,
+                        db = db,
                         onReply = { onReply(node.message.id) },
                         onToggleExpand = { onToggleExpand(node.message.id) },
                         onToggleTextExpand = { onToggleTextExpand(node.message.id) },
-                        onExpandDeepBranch = expandCallback
+                        onExpandDeepBranch = expandCallback,
+                        messageBody = messageBodies[node.message.id],
+                        isLoadingBody = loadingBodies.contains(node.message.id),
+                        isLoadingBodySize = loadingBodySizes.contains(node.message.id),
+                        bodyLength = bodyLengths[node.message.id] ?: node.message.bodyLength,
+                        onLoadBody = { onLoadBody(node.message.id) },
+                        onLinkHover = onLinkHover
                     )
                 }
             }
