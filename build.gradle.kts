@@ -1,4 +1,5 @@
 import nu.studer.gradle.jooq.JooqEdition
+import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 group = "org.rsdn.jana"
 version = "1.0.0-alpha"
@@ -22,6 +23,28 @@ repositories {
 // Переменные для автономной генерации
 val genDbFile = layout.buildDirectory.file("jooq-gen.db").get().asFile
 val genDbUrl = "jdbc:sqlite:${genDbFile.absolutePath}"
+
+compose.desktop {
+    application {
+        mainClass = "org.example.MainKt" // Ваш главный класс
+        nativeDistributions {
+            targetFormats(TargetFormat.Exe, TargetFormat.Msi)
+            packageName = "Jana"
+            packageVersion = "1.0.0"
+            modules("java.sql", "jdk.crypto.mscapi")
+            windows {
+//                iconFile.set(project.file("icon.ico"))
+                jvmArgs(
+                    "-Djavax.net.ssl.trustStoreType=Windows-ROOT",
+                    "-Djavax.net.ssl.trustStore=NONE"
+                )
+            }
+        }
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
+    }
+}
 
 // Настройка Flyway Gradle плагина (читает твои миграции из ресурсов)
 flyway {

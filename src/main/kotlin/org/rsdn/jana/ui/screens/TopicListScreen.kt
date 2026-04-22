@@ -3,6 +3,7 @@ package org.rsdn.jana.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +24,8 @@ import org.rsdn.jana.ui.components.TopAppBarWithBack
 import org.rsdn.jana.ui.components.TopicCard
 import org.rsdn.jana.ui.models.Forum
 import org.rsdn.jana.ui.models.Topic
+import org.rsdn.jana.ui.utils.formatDate
+import org.rsdn.jana.ui.utils.formatLastSyncStatus
 
 @Composable
 fun TopicListScreen(
@@ -30,7 +33,8 @@ fun TopicListScreen(
     db: DatabaseManager,
     syncManager: SyncManager,
     onBack: () -> Unit,
-    onTopicClick: (Topic) -> Unit
+    onTopicClick: (Topic) -> Unit,
+    scrollPositions: MutableMap<Int, Pair<Int, Int>> = mutableMapOf()
 ) {
     val topicDao = remember { MessageDao(db) }
     val scope = rememberCoroutineScope()
@@ -97,11 +101,27 @@ fun TopicListScreen(
     Column(modifier = Modifier.fillMaxSize()) {
         TopAppBarWithBack(
             title = forum.title,
-            subtitle = syncManager.formatLastSyncStatus(currentTimestamp), // Здесь будет "Обновлено: ..."
+            subtitle = formatLastSyncStatus(currentTimestamp),
             onBack = onBack
         )
 
+        val listState = rememberLazyListState()
+        
+        // Восстанавливаем позицию при загрузке экрана
+        LaunchedEffect(forum.id) {
+            val savedPosition = scrollPositions[forum.id]
+            if (savedPosition != null) {
+                listState.scrollToItem(savedPosition.first, savedPosition.second)
+            }
+        }
+        
+        // Сохраняем позицию скроллинга при изменении
+        LaunchedEffect(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset) {
+            scrollPositions[forum.id] = Pair(listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+        }
+
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -109,7 +129,7 @@ fun TopicListScreen(
             itemsIndexed(topics, key = { _, t -> t.id }) { index, topic ->
                 TopicCard(
                     topic = topic,
-                    dateText = syncManager.formatTopicDate(topic.lastActivity),
+                    dateText = formatDate(topic.lastActivity),
                     onClick = { onTopicClick(topic) }
                 )
                 SideEffect { lastSeenIndex = index }

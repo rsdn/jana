@@ -41,14 +41,14 @@ object PkceHelper {
 }
 
 class AuthService(private val httpClient: HttpClient) {
-    private val clientId = "test_public_client" // Используем проверенный ID
+    private val clientId = "jana" // Используем проверенный ID
 
     suspend fun authenticate(): String? = withContext(Dispatchers.IO) {
         val authCodeDeferred = CompletableDeferred<String?>()
 
         // 1. Находим любой свободный порт
         val freePort = ServerSocket(0).use { it.localPort }
-        val redirectUri = "http://127.0.0.1:$freePort/" // Слэш в конце обязателен!
+        val redirectUri = "http://localhost:$freePort/" // Слэш в конце обязателен!
 
         val codeVerifier = PkceHelper.generateVerifier()
         val codeChallenge = PkceHelper.generateChallenge(codeVerifier)
@@ -66,7 +66,7 @@ class AuthService(private val httpClient: HttpClient) {
 
         try {
             // 2. Строим URL в точности как рабочий клиент
-            val authUrl = URLBuilder("https://api.rsdn.org/connect/auth").apply {
+            val authUrl = URLBuilder("https://api.rsdn.org/connect/authorize").apply {
                 parameters.append("response_type", "code")
                 parameters.append("redirect_uri", redirectUri)
                 parameters.append("client_id", clientId)

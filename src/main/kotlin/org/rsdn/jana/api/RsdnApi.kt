@@ -78,6 +78,23 @@ class RsdnApi(val token: String? = null) : AutoCloseable {
     }
 
     /**
+     * Получить сообщения топика (включая корневое сообщение и все ответы)
+     */
+    suspend fun getTopicMessages(
+        topicId: Int,
+        limit: Int = 100,
+        offset: Int = 0
+    ): MessageInfoPagedResult {
+        return client.get("messages") {
+            parameter("topicID", topicId)
+            parameter("onlyTopics", false)
+            parameter("limit", limit)
+            parameter("offset", offset)
+            parameter("order", 0) // хронологический порядок для сообщений
+        }.body()
+    }
+
+    /**
      * Получить профиль текущего пользователя
      */
     suspend fun getMe(): Account {

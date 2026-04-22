@@ -14,11 +14,6 @@ import org.rsdn.jana.data.DatabaseManager
 import org.rsdn.jana.data.dao.ForumDao
 import org.rsdn.jana.data.dao.MessageDao
 import org.rsdn.jana.ui.components.ServerStatus
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.time.Duration.Companion.milliseconds
 
 private val logger = KotlinLogging.logger {}
@@ -32,49 +27,13 @@ class SyncManager(db: DatabaseManager) {
     // Хранилище последних дат синхронизации в памяти для UI
     val lastSyncTimes = mutableStateMapOf<Int, Long>()
 
-    private fun getRelativeDateTimeString(timestamp: Long?): String {
-        if (timestamp == null || timestamp == 0L) return ""
-
-        val dateTime = LocalDateTime.ofInstant(
-            Instant.ofEpochSecond(timestamp),
-            ZoneId.systemDefault()
-        )
-        val now = LocalDateTime.now()
-
-        return when {
-            // Сегодня: "14:20"
-            dateTime.toLocalDate() == now.toLocalDate() -> {
-                dateTime.format(DateTimeFormatter.ofPattern("HH:mm"))
-            }
-            // В текущем году: "06.04 14:20" (без года, чтобы влезло)
-            dateTime.year == now.year -> {
-                dateTime.format(DateTimeFormatter.ofPattern("dd.MM HH:mm"))
-            }
-            // Прошлые года: "06.04.25" (время убираем, так как дата важнее)
-            else -> {
-                dateTime.format(DateTimeFormatter.ofPattern("dd.MM.yy"))
-            }
-        }
-    }
-
-    fun formatLastSyncStatus(timestamp: Long?): String {
-        val time = getRelativeDateTimeString(timestamp)
-        return if (time.isEmpty()) "Не обновлялось" else "Обновлено: $time"
-    }
-
-    fun formatTopicDate(timestamp: Long?): String {
-        return getRelativeDateTimeString(timestamp)
-    }
-
     suspend fun checkServerHealth() = withContext(Dispatchers.IO) {
         try {
-            // Устанавливаем жесткий таймаут для проверки связи
             withTimeout(3000.milliseconds) {
                 api.getServiceInfo()
             }
             serverStatus = ServerStatus.ONLINE
         } catch (_: Exception) {
-            // Любая ошибка (Network, Timeout, 404) — сервер недоступен
             serverStatus = ServerStatus.OFFLINE
         }
     }
@@ -85,17 +44,14 @@ class SyncManager(db: DatabaseManager) {
             val apiForums = api.getForums()
 
             if (apiForums.isNotEmpty()) {
-                // Здесь оставляем твою логику маппинга и сохранения
                 forumDao.sync(apiForums)
                 logger.info { "Saved forums to DB" }
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            // Пробрасываем CancellationException, чтобы корутины работали корректно
             if (e is kotlinx.coroutines.CancellationException) throw e
 
             logger.error(e) { "Failed to sync forums" }
-            // КИДАЕМ ОШИБКУ ДАЛЬШЕ, чтобы MainWindow поймал её в catch и показал плашку
             throw e
         }
     }
@@ -110,13 +66,9 @@ class SyncManager(db: DatabaseManager) {
             if (coroutineContext.isActive && result.items.isNotEmpty()) {
                 messageDao.saveMessages(result.items)
 
-                // 1. Получаем текущий Unix Timestamp (секунды)
                 val nowSeconds = System.currentTimeMillis() / 1000
-
-                // 2. Пишем в БД число
                 forumDao.updateLastSyncDate(forumId, nowSeconds)
 
-                // 3. Обновляем StateMap числом
                 withContext(Dispatchers.Main) {
                     lastSyncTimes[forumId] = nowSeconds
                 }
@@ -124,6 +76,30 @@ class SyncManager(db: DatabaseManager) {
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
             logger.error(e) { "Sync topics error for forum $forumId: ${e.message}" }
+            throw e
+        }
+    }
+
+    /**
+     * Синхронизировать сообщения топика с пагинацией.
+     * Возвращает true, если есть ещё сообщения для загрузки
+     */
+    suspend fun syncTopicMessages(topicId: Int, currentCount: Int = 0): Boolean = withContext(Dispatchers.IO) {
+        try {
+            if (!coroutineContext.isActive) return@withContext false
+
+            logger.info { "Loading messages for topic $topicId with offset $currentCount" }
+            val result = api.getTopicMessages(topicId, limit = 100, offset = currentCount)
+
+            if (coroutineContext.isActive && result.items.isNotEmpty()) {
+                messageDao.saveMessages(result.items)
+                result.items.size >= 100
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            logger.error(e) { "Sync messages error for topic $topicId: ${e.message}" }
             throw e
         }
     }
