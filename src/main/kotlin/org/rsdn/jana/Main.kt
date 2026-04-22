@@ -7,6 +7,7 @@ import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.network.ktor3.KtorNetworkFetcherFactory
 import org.rsdn.jana.data.DatabaseManager
+import org.rsdn.jana.data.WindowSettingsStore
 import org.rsdn.jana.ui.MainWindow
 import org.rsdn.jana.ui.SplashWindow
 
@@ -22,6 +23,7 @@ fun main() = application {
 
     // Создаём ДО композиции и запоминаем
     val db = remember { DatabaseManager() }
+    val windowSettingsStore = remember { WindowSettingsStore.getInstance() }
     var isDbReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -29,8 +31,11 @@ fun main() = application {
         isDbReady = true
     }
 
+    // Получаем позицию главного окна для отображения splash на том же экране
+    val savedPosition = windowSettingsStore.getSavedPosition()
+
     if (!isDbReady) {
-        SplashWindow()
+        SplashWindow(targetWindowPosition = savedPosition)
     } else {
         MainWindow(
             onClose = {

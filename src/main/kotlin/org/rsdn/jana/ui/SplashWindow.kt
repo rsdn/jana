@@ -11,7 +11,6 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
@@ -20,22 +19,25 @@ import androidx.compose.ui.window.WindowPosition
 import org.jetbrains.compose.resources.painterResource
 import org.rsdn.jana.resources.Res
 import org.rsdn.jana.resources.splash
-import java.awt.Toolkit
+import java.awt.GraphicsEnvironment
 
 @Composable
-fun SplashWindow() {
-    val screenSize = Toolkit.getDefaultToolkit().screenSize
+fun SplashWindow(targetWindowPosition: Pair<Int, Int>? = null) {
+    val splashWidth = 656
+    val splashHeight = 400
+    
+    // Определяем экран для отображения splash
+    val position = remember {
+        calculateSplashPosition(splashWidth, splashHeight, targetWindowPosition)
+    }
 
     Window(
         onCloseRequest = {},
         title = "",
         state = rememberWindowState(
-            width = 656.dp,
-            height = 400.dp,
-            position = WindowPosition(
-                x = (screenSize.width / 2 - 656 / 2).dp,
-                y = (screenSize.height / 2 - 400 / 2).dp
-            )
+            width = splashWidth.dp,
+            height = splashHeight.dp,
+            position = WindowPosition(position.first.dp, position.second.dp)
         ),
         resizable = false,
         undecorated = true,
@@ -59,7 +61,7 @@ fun SplashWindow() {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 300.dp, bottom = 40.dp), // 300-360dp
+                        .padding(top = 300.dp, bottom = 40.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -90,13 +92,48 @@ fun SplashWindow() {
                     )
 
                     CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),  // уменьшил
+                        modifier = Modifier.size(24.dp),
                         color = Color.White,
-                        strokeWidth = 2.dp,  // тоньше
+                        strokeWidth = 2.dp,
                         trackColor = Color.White.copy(alpha = 0.3f)
                     )
                 }
             }
         }
     }
+}
+
+/**
+ * Вычислить позицию splash окна на том же экране, где будет главное окно.
+ */
+private fun calculateSplashPosition(
+    splashWidth: Int,
+    splashHeight: Int,
+    targetPosition: Pair<Int, Int>?
+): Pair<Int, Int> {
+    val ge = GraphicsEnvironment.getLocalGraphicsEnvironment()
+    
+    // Если есть сохранённая позиция, находим экран для неё
+    if (targetPosition != null) {
+        val (targetX, targetY) = targetPosition
+        
+        // Находим экран, на котором будет главное окно
+        for (screen in ge.screenDevices) {
+            val screenBounds = screen.defaultConfiguration.bounds
+            
+            if (screenBounds.contains(targetX, targetY)) {
+                // Центрируем splash на этом экране
+                val centerX = screenBounds.x + (screenBounds.width - splashWidth) / 2
+                val centerY = screenBounds.y + (screenBounds.height - splashHeight) / 2
+                return Pair(centerX, centerY)
+            }
+        }
+    }
+    
+    // Fallback: центрируем на главном экране
+    val defaultScreen = ge.defaultScreenDevice
+    val screenBounds = defaultScreen.defaultConfiguration.bounds
+    val centerX = screenBounds.x + (screenBounds.width - splashWidth) / 2
+    val centerY = screenBounds.y + (screenBounds.height - splashHeight) / 2
+    return Pair(centerX, centerY)
 }

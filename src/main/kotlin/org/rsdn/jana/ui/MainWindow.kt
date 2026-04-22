@@ -7,7 +7,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.rememberWindowState
+import org.rsdn.jana.data.rememberWindowSettingsStore
 import org.rsdn.jana.data.DatabaseManager
 import org.rsdn.jana.data.dao.ThemeMode
 import org.rsdn.jana.ui.components.*
@@ -21,15 +21,25 @@ import org.rsdn.jana.org.rsdn.jana.ui.screens.WatchedScreen
 @Composable
 fun MainWindow(onClose: () -> Unit, db: DatabaseManager) {
     val state = rememberMainState(db)
+    val windowSettingsStore = rememberWindowSettingsStore()
 
     var themeMode by remember { mutableStateOf(ThemeMode.SYSTEM) }
     var showAbout by remember { mutableStateOf(false) }
 
+    // Загружаем сохранённое состояние окна
+    val windowState = remember { windowSettingsStore.loadWindowState() }
+
     Window(
         onCloseRequest = onClose,
         title = "Jana - RSDN Client",
-        state = rememberWindowState(width = 1024.dp, height = 768.dp)
+        state = windowState
     ) {
+        // Сохраняем состояние окна при закрытии
+        DisposableEffect(Unit) {
+            onDispose {
+                windowSettingsStore.saveWindowState(windowState)
+            }
+        }
         JanaTheme(themeMode = themeMode) {
             if (state.isLoading && state.forums.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
